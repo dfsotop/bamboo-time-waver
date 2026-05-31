@@ -14,7 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bamboo_settings: {
+        Row: {
+          api_key_encrypted: string
+          clockin_end: string
+          clockin_start: string
+          clockout_end: string
+          clockout_start: string
+          created_at: string
+          employee_id: string
+          enabled: boolean
+          subdomain: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key_encrypted: string
+          clockin_end?: string
+          clockin_start?: string
+          clockout_end?: string
+          clockout_start?: string
+          created_at?: string
+          employee_id: string
+          enabled?: boolean
+          subdomain: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key_encrypted?: string
+          clockin_end?: string
+          clockin_start?: string
+          clockout_end?: string
+          clockout_start?: string
+          created_at?: string
+          employee_id?: string
+          enabled?: boolean
+          subdomain?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      execution_history: {
+        Row: {
+          bamboo_response: Json | null
+          created_at: string
+          error: string | null
+          id: string
+          planned_clock_in: string | null
+          planned_clock_out: string | null
+          run_date: string
+          status: string
+          triggered_by: string
+          user_id: string
+        }
+        Insert: {
+          bamboo_response?: Json | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          planned_clock_in?: string | null
+          planned_clock_out?: string | null
+          run_date: string
+          status: string
+          triggered_by?: string
+          user_id: string
+        }
+        Update: {
+          bamboo_response?: Json | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          planned_clock_in?: string | null
+          planned_clock_out?: string | null
+          run_date?: string
+          status?: string
+          triggered_by?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
