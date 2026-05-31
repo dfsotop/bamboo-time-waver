@@ -1,4 +1,4 @@
-// Cron endpoint hit by pg_cron once per hour 08:00–11:00 UTC on weekdays.
+// Cron endpoint hit by pg_cron once per hour 06:00–11:00 UTC on weekdays.
 // Idempotent: the workflow's "existing entry" check prevents duplicates.
 //
 // Auth: shared secret in the `x-cron-secret` header (constant-time compared).
