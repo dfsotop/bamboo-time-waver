@@ -45,7 +45,7 @@ function getPrimaryKey(): Buffer {
     decodeBase64Key(value) ||
     (Buffer.byteLength(value, "utf8") === 32 ? Buffer.from(value, "utf8") : null);
 
-  if (key.length !== 32) {
+  if (!key || key.length !== 32) {
     throw new Error(
       `BAMBOO_ENC_KEY must resolve to 32 bytes (got ${key?.length ?? 0}). Supported formats: base64, base64url, 64-char hex, or raw 32-byte text.`,
     );
