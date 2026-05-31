@@ -1,36 +1,23 @@
-// Server-only reversible storage helper for BambooHR API keys.
+// Server-only reversible encryption for BambooHR API keys.
 //
-// Current format: b64:<base64-encoded utf8>
+// Current format: v2:<base64(iv|tag|ciphertext)> using AES-256-GCM.
+// The 32-byte key is derived from BAMBOO_ENC_KEY via SHA-256 so any
+// non-empty secret value works.
 //
-// Legacy read support remains for previously encrypted values so they can be
-// transparently re-saved in the simpler base64 format the next time we touch
-// the record.
+// Legacy read support:
+//   - b64:<base64>  → previously stored as plain base64
+//   - raw base64    → legacy AES-GCM keyed off SUPABASE_SERVICE_ROLE_KEY
 
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, createHash } from "crypto";
+import { randomBytes } from "crypto";
 
-const B64_PREFIX = "b64:";
 const V2_PREFIX = "v2:";
-
-function encodeBase64Secret(plaintext: string): string {
-  return Buffer.from(plaintext, "utf8").toString("base64");
-}
-
-function decodeBase64Secret(payload: string): string {
-  return Buffer.from(payload, "base64").toString("utf8");
-}
+const B64_PREFIX = "b64:";
 
 function getPrimaryKey(): Buffer {
   const raw = process.env.BAMBOO_ENC_KEY;
-  if (!raw) {
-    throw new Error("Existing Bamboo key uses retired encryption; please save your API key again.");
-  }
-
-  const key = Buffer.from(raw.trim(), "base64");
-  if (key.length !== 32) {
-    throw new Error("Existing Bamboo key uses retired encryption; please save your API key again.");
-  }
-
-  return key;
+  if (!raw) throw new Error("BAMBOO_ENC_KEY is not configured");
+  return createHash("sha256").update(raw.trim()).digest();
 }
 
 function getLegacyKey(): Buffer | null {
@@ -58,30 +45,27 @@ function decryptWithKey(payload: string, key: Buffer): string {
 }
 
 export function encryptSecret(plaintext: string): string {
-  return B64_PREFIX + encodeBase64Secret(plaintext);
+  return V2_PREFIX + encryptWithKey(plaintext, getPrimaryKey());
 }
 
 export function decryptSecret(payload: string): string {
-  if (payload.startsWith(B64_PREFIX)) {
-    return decodeBase64Secret(payload.slice(B64_PREFIX.length));
-  }
-
   if (payload.startsWith(V2_PREFIX)) {
     return decryptWithKey(payload.slice(V2_PREFIX.length), getPrimaryKey());
   }
-
+  if (payload.startsWith(B64_PREFIX)) {
+    return Buffer.from(payload.slice(B64_PREFIX.length), "base64").toString("utf8");
+  }
   const legacy = getLegacyKey();
   if (legacy) {
     try {
       return decryptWithKey(payload, legacy);
     } catch {
-      return decodeBase64Secret(payload);
+      // fall through
     }
   }
-
-  return decodeBase64Secret(payload);
+  return Buffer.from(payload, "base64").toString("utf8");
 }
 
 export function isCurrentFormat(payload: string): boolean {
-  return payload.startsWith(B64_PREFIX);
+  return payload.startsWith(V2_PREFIX);
 }
