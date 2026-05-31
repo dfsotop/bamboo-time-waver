@@ -24,7 +24,7 @@ export interface ExecutionResult {
   planned_clock_in?: string;
   planned_clock_out?: string;
   error?: string;
-  response?: Record<string, unknown>;
+  response?: { ok: boolean; status: number };
 }
 
 function toMinutes(hhmm: string): number {
@@ -171,7 +171,7 @@ export async function executeForUser(
       date,
       inAt,
       outAt,
-    )) as Record<string, unknown>;
+    )) as { ok: boolean; status: number };
     return await recordResult(
       userId,
       date,
