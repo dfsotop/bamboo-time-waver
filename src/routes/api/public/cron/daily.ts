@@ -13,16 +13,36 @@ import { executeForUser, madridToday } from "@/lib/bamboo/workflow.server";
 const CRON_CONCURRENCY = 3;
 const DEBOUNCE_MINUTES = 5;
 
-function checkSecret(request: Request): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
+async function checkSecret(request: Request): Promise<boolean> {
   const provided = request.headers.get("x-cron-secret") ?? "";
-  const a = Buffer.from(provided);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length) return false;
+  if (!provided) return false;
+
+  // 1. Env-based check (manual invocations / external schedulers).
+  const expected = process.env.CRON_SECRET;
+  if (expected) {
+    const a = Buffer.from(provided);
+    const b = Buffer.from(expected);
+    if (a.length === b.length) {
+      try {
+        if (timingSafeEqual(a, b)) return true;
+      } catch {
+        /* fall through */
+      }
+    }
+  }
+
+  // 2. Vault-based check (used by pg_cron via the verify_cron_secret RPC).
   try {
-    return timingSafeEqual(a, b);
-  } catch {
+    const { data, error } = await supabaseAdmin.rpc("verify_cron_secret", {
+      provided,
+    });
+    if (error) {
+      console.error("cron: verify_cron_secret rpc failed", error.message);
+      return false;
+    }
+    return data === true;
+  } catch (e) {
+    console.error("cron: rpc threw", e);
     return false;
   }
 }
@@ -77,7 +97,7 @@ async function runWithConcurrency<T, R>(
 }
 
 async function handle(request: Request) {
-  if (!checkSecret(request)) {
+  if (!(await checkSecret(request))) {
     return new Response("Unauthorized", { status: 401 });
   }
 
