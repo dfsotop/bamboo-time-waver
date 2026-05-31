@@ -53,7 +53,10 @@ function AuthenticatedLayout() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => supabase.auth.signOut()}
+              onClick={async () => {
+                await supabase.auth.signOut();
+                navigate({ to: "/login", replace: true });
+              }}
               className="ml-2"
             >
               <LogOut className="h-4 w-4" />

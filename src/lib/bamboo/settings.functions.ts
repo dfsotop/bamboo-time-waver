@@ -7,15 +7,41 @@ import { findEmployeeByEmail } from "./client.server";
 
 const TimeStr = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Expected HH:MM");
 
-const SaveInput = z.object({
-  subdomain: z.string().trim().min(1).max(64).regex(/^[a-zA-Z0-9-]+$/),
-  apiKey: z.string().trim().min(8).max(512).optional(), // optional on update if already set
-  clockin_start: TimeStr,
-  clockin_end: TimeStr,
-  clockout_start: TimeStr,
-  clockout_end: TimeStr,
-  enabled: z.boolean(),
-});
+const toMin = (t: string) => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+};
+
+const SaveInput = z
+  .object({
+    subdomain: z.string().trim().min(1).max(64).regex(/^[a-zA-Z0-9-]+$/),
+    apiKey: z.string().trim().min(8).max(512).optional(),
+    clockin_start: TimeStr,
+    clockin_end: TimeStr,
+    clockout_start: TimeStr,
+    clockout_end: TimeStr,
+    enabled: z.boolean(),
+  })
+  .refine((d) => toMin(d.clockin_start) < toMin(d.clockin_end), {
+    message: "Clock-in earliest must be before clock-in latest",
+    path: ["clockin_end"],
+  })
+  .refine((d) => toMin(d.clockout_start) < toMin(d.clockout_end), {
+    message: "Clock-out earliest must be before clock-out latest",
+    path: ["clockout_end"],
+  })
+  .refine((d) => toMin(d.clockin_end) <= toMin(d.clockout_start), {
+    message: "Clock-in window must end before clock-out window starts",
+    path: ["clockout_start"],
+  })
+  .refine((d) => toMin(d.clockin_end) - toMin(d.clockin_start) <= 120, {
+    message: "Clock-in window must be at most 2 hours wide",
+    path: ["clockin_end"],
+  })
+  .refine((d) => toMin(d.clockout_end) - toMin(d.clockout_start) <= 120, {
+    message: "Clock-out window must be at most 2 hours wide",
+    path: ["clockout_end"],
+  });
 
 export const saveSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -23,23 +49,35 @@ export const saveSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const userId = context.userId;
     const userEmail = (context.claims.email as string | undefined) ?? "";
+    const emailVerified =
+      (context.claims.email_verified as boolean | undefined) ??
+      // Google/OAuth providers may set this nested under user_metadata
+      Boolean(
+        (context.claims as Record<string, unknown>).email_verified ||
+          ((context.claims as { user_metadata?: { email_verified?: boolean } }).user_metadata
+            ?.email_verified),
+      );
 
-    // Load existing row to know if we have a stored key
+    if (!emailVerified) {
+      throw new Error(
+        "Please verify your email address before connecting BambooHR (check your inbox for the confirmation link).",
+      );
+    }
+
     const { data: existing } = await supabaseAdmin
       .from("bamboo_settings")
       .select("api_key_encrypted, employee_id")
       .eq("user_id", userId)
       .maybeSingle();
 
-    let apiKey = data.apiKey;
     let employeeId: string | undefined;
+    const apiKey = data.apiKey;
 
     if (apiKey) {
-      // Verify the key + auto-detect employee
       const emp = await findEmployeeByEmail(data.subdomain, apiKey, userEmail);
       if (!emp) {
         throw new Error(
-          `API key works but no BambooHR employee matches "${userEmail}". Make sure your account email matches your work email in BambooHR.`,
+          `API key works but no BambooHR employee matches "${userEmail}". Your verified account email must match your work email in BambooHR.`,
         );
       }
       employeeId = emp.id;
@@ -80,9 +118,16 @@ export const getSettings = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
+    const emailVerified =
+      (context.claims.email_verified as boolean | undefined) ??
+      Boolean(
+        (context.claims as { user_metadata?: { email_verified?: boolean } }).user_metadata
+          ?.email_verified,
+      );
     return {
       settings: data,
       hasApiKey: Boolean(data),
       email: (context.claims.email as string | undefined) ?? "",
+      emailVerified,
     };
   });
