@@ -35,8 +35,8 @@ function DashboardPage() {
   const history = useQuery({ queryKey: ["history"], queryFn: () => fetchHistory() });
 
   const runMutation = useMutation({
-    mutationFn: () => runNowFn(),
-    onSuccess: (r: { status: string }) => {
+    mutationFn: async () => (await runNowFn()) as { status: string },
+    onSuccess: (r) => {
       toast.success(`Run complete: ${r.status}`);
       qc.invalidateQueries({ queryKey: ["history"] });
     },
@@ -44,8 +44,9 @@ function DashboardPage() {
   });
 
   const retryMutation = useMutation({
-    mutationFn: (historyId: string) => retryFn({ data: { historyId } }),
-    onSuccess: (r: { status: string }) => {
+    mutationFn: async (historyId: string) =>
+      (await retryFn({ data: { historyId } })) as { status: string },
+    onSuccess: (r) => {
       toast.success(`Retry complete: ${r.status}`);
       qc.invalidateQueries({ queryKey: ["history"] });
     },

@@ -2,12 +2,26 @@
 // Auth: HTTP Basic, username = API key, password = "x".
 // Docs: https://documentation.bamboohr.com/reference
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 function basicAuth(apiKey: string): string {
   return "Basic " + Buffer.from(`${apiKey}:x`).toString("base64");
 }
 
 function baseUrl(subdomain: string): string {
   return `https://api.bamboohr.com/api/gateway.php/${encodeURIComponent(subdomain)}/v1`;
+}
+
+/**
+ * Truncate + redact possible secrets/tokens from external API error bodies before
+ * they get persisted to the database.
+ */
+export function sanitizeBambooErrorBody(text: string): string {
+  const truncated = text.length > 500 ? text.slice(0, 500) + "…" : text;
+  // Redact long opaque tokens / emails / UUIDs that may slip into error payloads.
+  return truncated
+    .replace(/[A-Za-z0-9_\-]{24,}/g, "[redacted]")
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[email-redacted]");
 }
 
 async function bambooFetch(
@@ -21,7 +35,21 @@ async function bambooFetch(
   headers.set("Authorization", basicAuth(apiKey));
   headers.set("Accept", "application/json");
   if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-  return fetch(url, { ...init, headers });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, headers, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function readSanitized(res: Response): Promise<string> {
+  try {
+    return sanitizeBambooErrorBody(await res.text());
+  } catch {
+    return "<unreadable body>";
+  }
 }
 
 export interface BambooEmployee {
@@ -38,7 +66,7 @@ export async function findEmployeeByEmail(
 ): Promise<BambooEmployee | null> {
   const res = await bambooFetch(subdomain, apiKey, "/employees/directory");
   if (!res.ok) {
-    throw new Error(`BambooHR directory lookup failed (${res.status}): ${await res.text()}`);
+    throw new Error(`BambooHR directory lookup failed (${res.status}): ${await readSanitized(res)}`);
   }
   const data = (await res.json()) as { employees?: BambooEmployee[] };
   const target = email.trim().toLowerCase();
@@ -62,14 +90,13 @@ export async function getTimeOffToday(
     `/time_off/whos_out?start=${isoDate}&end=${isoDate}`,
   );
   if (!res.ok) {
-    throw new Error(`BambooHR whos_out failed (${res.status}): ${await res.text()}`);
+    throw new Error(`BambooHR whos_out failed (${res.status}): ${await readSanitized(res)}`);
   }
   const items = (await res.json()) as Array<{
     type: string;
     employeeId?: number;
     name?: string;
   }>;
-  // Holidays apply to everyone and have no employeeId
   const holiday = items.find((i) => i.type === "holiday");
   if (holiday) return { isOff: true, reason: `holiday: ${holiday.name ?? "company holiday"}` };
   const personal = items.find(
@@ -92,9 +119,8 @@ export async function hasEntryForDate(
     `/time_tracking/timesheet_entries?employeeIds=${encodeURIComponent(employeeId)}&start=${isoDate}&end=${isoDate}`,
   );
   if (!res.ok) {
-    // If the time tracking endpoint isn't enabled for this company, treat as no entries.
     if (res.status === 404) return false;
-    throw new Error(`BambooHR timesheet_entries failed (${res.status}): ${await res.text()}`);
+    throw new Error(`BambooHR timesheet_entries failed (${res.status}): ${await readSanitized(res)}`);
   }
   const items = (await res.json()) as unknown;
   return Array.isArray(items) && items.length > 0;
@@ -123,13 +149,11 @@ export async function storeClockEntries(
     method: "POST",
     body: JSON.stringify(body),
   });
-  const text = await res.text();
   if (!res.ok) {
-    throw new Error(`BambooHR clock_entries/store failed (${res.status}): ${text}`);
+    throw new Error(
+      `BambooHR clock_entries/store failed (${res.status}): ${await readSanitized(res)}`,
+    );
   }
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { raw: text };
-  }
+  // Discard raw response — we never need to persist BambooHR's payload.
+  return { ok: true, status: res.status };
 }

@@ -100,7 +100,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      verify_cron_secret: { Args: { provided: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

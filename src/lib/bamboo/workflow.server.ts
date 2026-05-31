@@ -1,11 +1,13 @@
 // Server-only workflow: for a given user, check time-off + existing entries
 // and submit a randomized clock-in / clock-out to BambooHR.
 
+import { randomInt } from "crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { decryptSecret } from "./encryption.server";
+import { decryptSecret, encryptSecret, isCurrentFormat } from "./encryption.server";
 import {
   getTimeOffToday,
   hasEntryForDate,
+  sanitizeBambooErrorBody,
   storeClockEntries,
 } from "./client.server";
 
@@ -22,7 +24,7 @@ export interface ExecutionResult {
   planned_clock_in?: string;
   planned_clock_out?: string;
   error?: string;
-  response?: string;
+  response?: { ok: boolean; status: number };
 }
 
 function toMinutes(hhmm: string): number {
@@ -40,7 +42,8 @@ function randomBetween(start: string, end: string): string {
   const b = toMinutes(end);
   const lo = Math.min(a, b);
   const hi = Math.max(a, b);
-  return fromMinutes(lo + Math.floor(Math.random() * (hi - lo + 1)));
+  // crypto.randomInt is upper-exclusive
+  return fromMinutes(lo + randomInt(0, hi - lo + 1));
 }
 
 /** ISO date in Europe/Madrid for "right now". */
@@ -77,7 +80,6 @@ export async function executeForUser(
   const date = opts.date ?? today.iso;
   const weekday = opts.date ? new Date(opts.date + "T12:00:00Z").getUTCDay() : today.weekday;
 
-  // Mon=1..Fri=5
   if (!opts.force && (weekday === 0 || weekday === 6)) {
     return await recordResult(userId, date, { status: "skipped_weekend" }, opts.triggeredBy);
   }
@@ -109,7 +111,7 @@ export async function executeForUser(
   let apiKey: string;
   try {
     apiKey = decryptSecret(settings.api_key_encrypted);
-  } catch (e) {
+  } catch {
     return await recordResult(
       userId,
       date,
@@ -118,8 +120,19 @@ export async function executeForUser(
     );
   }
 
+  // Lazy re-encryption: if stored ciphertext is still on the legacy seed, upgrade it.
+  if (!isCurrentFormat(settings.api_key_encrypted)) {
+    try {
+      await supabaseAdmin
+        .from("bamboo_settings")
+        .update({ api_key_encrypted: encryptSecret(apiKey) })
+        .eq("user_id", userId);
+    } catch (e) {
+      console.warn("Failed to lazy re-encrypt API key for user", userId, e);
+    }
+  }
+
   try {
-    // 1. Time-off / holiday check
     const off = await getTimeOffToday(settings.subdomain, apiKey, settings.employee_id, date);
     if (off.isOff) {
       const status: ExecutionStatus = off.reason?.startsWith("holiday")
@@ -133,7 +146,6 @@ export async function executeForUser(
       );
     }
 
-    // 2. Existing entry check
     const exists = await hasEntryForDate(settings.subdomain, apiKey, settings.employee_id, date);
     if (exists) {
       return await recordResult(
@@ -144,7 +156,6 @@ export async function executeForUser(
       );
     }
 
-    // 3. Randomize times & submit
     const inAt = randomBetween(
       String(settings.clockin_start).slice(0, 5),
       String(settings.clockin_end).slice(0, 5),
@@ -153,14 +164,14 @@ export async function executeForUser(
       String(settings.clockout_start).slice(0, 5),
       String(settings.clockout_end).slice(0, 5),
     );
-    const resp = await storeClockEntries(
+    const resp = (await storeClockEntries(
       settings.subdomain,
       apiKey,
       settings.employee_id,
       date,
       inAt,
       outAt,
-    );
+    )) as { ok: boolean; status: number };
     return await recordResult(
       userId,
       date,
@@ -168,15 +179,16 @@ export async function executeForUser(
         status: "success",
         planned_clock_in: inAt,
         planned_clock_out: outAt,
-        response: JSON.stringify(resp),
+        response: resp,
       },
       opts.triggeredBy,
     );
   } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
     return await recordResult(
       userId,
       date,
-      { status: "failed", error: e instanceof Error ? e.message : String(e) },
+      { status: "failed", error: sanitizeBambooErrorBody(raw) },
       opts.triggeredBy,
     );
   }
