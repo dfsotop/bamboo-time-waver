@@ -12,12 +12,43 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypt
 
 const V2_PREFIX = "v2:";
 
+function normalizeKeyInput(raw: string): string {
+  const trimmed = raw.trim();
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+
+  if ((first === '"' || first === "'" || first === "`") && first === last) {
+    return trimmed.slice(1, -1).trim();
+  }
+
+  return trimmed;
+}
+
+function decodeBase64Key(value: string): Buffer | null {
+  if (!/^[A-Za-z0-9+/_=-]+$/.test(value)) return null;
+
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  if (normalized.length % 4 === 1) return null;
+
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+  const decoded = Buffer.from(padded, "base64");
+  return decoded.length > 0 ? decoded : null;
+}
+
 function getPrimaryKey(): Buffer {
   const raw = process.env.BAMBOO_ENC_KEY;
   if (!raw) throw new Error("BAMBOO_ENC_KEY missing — cannot encrypt/decrypt API keys");
-  const key = Buffer.from(raw, "base64");
+
+  const value = normalizeKeyInput(raw);
+  const key =
+    (/^[A-Fa-f0-9]{64}$/.test(value) && Buffer.from(value, "hex")) ||
+    decodeBase64Key(value) ||
+    (Buffer.byteLength(value, "utf8") === 32 ? Buffer.from(value, "utf8") : null);
+
   if (key.length !== 32) {
-    throw new Error(`BAMBOO_ENC_KEY must decode to 32 bytes (got ${key.length})`);
+    throw new Error(
+      `BAMBOO_ENC_KEY must resolve to 32 bytes (got ${key?.length ?? 0}). Supported formats: base64, base64url, 64-char hex, or raw 32-byte text.`,
+    );
   }
   return key;
 }
