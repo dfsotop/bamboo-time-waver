@@ -36,7 +36,7 @@ function DashboardPage() {
 
   const runMutation = useMutation({
     mutationFn: () => runNowFn(),
-    onSuccess: (r) => {
+    onSuccess: (r: { status: string }) => {
       toast.success(`Run complete: ${r.status}`);
       qc.invalidateQueries({ queryKey: ["history"] });
     },
@@ -45,7 +45,7 @@ function DashboardPage() {
 
   const retryMutation = useMutation({
     mutationFn: (historyId: string) => retryFn({ data: { historyId } }),
-    onSuccess: (r) => {
+    onSuccess: (r: { status: string }) => {
       toast.success(`Retry complete: ${r.status}`);
       qc.invalidateQueries({ queryKey: ["history"] });
     },

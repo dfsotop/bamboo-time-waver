@@ -22,7 +22,7 @@ export interface ExecutionResult {
   planned_clock_in?: string;
   planned_clock_out?: string;
   error?: string;
-  response?: unknown;
+  response?: string;
 }
 
 function toMinutes(hhmm: string): number {
@@ -168,7 +168,7 @@ export async function executeForUser(
         status: "success",
         planned_clock_in: inAt,
         planned_clock_out: outAt,
-        response: resp,
+        response: JSON.stringify(resp),
       },
       opts.triggeredBy,
     );
@@ -195,7 +195,7 @@ async function recordResult(
     planned_clock_out: result.planned_clock_out ?? null,
     status: result.status,
     error: result.error ?? null,
-    bamboo_response: (result.response as object | undefined) ?? null,
+    bamboo_response: result.response ? (JSON.parse(result.response) as object) : null,
     triggered_by: triggeredBy,
   });
   return result;
