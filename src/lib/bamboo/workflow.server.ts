@@ -195,7 +195,7 @@ async function recordResult(
     planned_clock_out: result.planned_clock_out ?? null,
     status: result.status,
     error: result.error ?? null,
-    bamboo_response: result.response ? (JSON.parse(result.response) as object) : null,
+    bamboo_response: result.response ?? null,
     triggered_by: triggeredBy,
   });
   return result;
