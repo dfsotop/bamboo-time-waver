@@ -106,14 +106,14 @@ async function handle(request: Request) {
     return Response.json({ skipped: "weekend", date: today.iso });
   }
 
-  // Guard against the cron firing before 10:00 Madrid (pg_cron runs hourly).
+  // Guard against the cron firing before 08:00 Madrid (pg_cron runs hourly).
   const hourFmt = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/Madrid",
     hour: "2-digit",
     hour12: false,
   });
   const hour = parseInt(hourFmt.format(new Date()), 10);
-  if (hour < 10) {
+  if (hour < 8) {
     return Response.json({ skipped: "too_early", hour, date: today.iso });
   }
 
