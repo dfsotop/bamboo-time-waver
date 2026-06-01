@@ -23,6 +23,8 @@ export interface ExecutionResult {
   status: ExecutionStatus;
   planned_clock_in?: string;
   planned_clock_out?: string;
+  planned_lunch_out?: string;
+  planned_lunch_in?: string;
   error?: string;
   response?: { ok: boolean; status: number };
 }
@@ -160,6 +162,14 @@ export async function executeForUser(
       String(settings.clockin_start).slice(0, 5),
       String(settings.clockin_end).slice(0, 5),
     );
+    const lunchOutAt = randomBetween(
+      String(settings.lunch_out_start).slice(0, 5),
+      String(settings.lunch_out_end).slice(0, 5),
+    );
+    const lunchInAt = randomBetween(
+      String(settings.lunch_in_start).slice(0, 5),
+      String(settings.lunch_in_end).slice(0, 5),
+    );
     const outAt = randomBetween(
       String(settings.clockout_start).slice(0, 5),
       String(settings.clockout_end).slice(0, 5),
@@ -169,8 +179,10 @@ export async function executeForUser(
       apiKey,
       settings.employee_id,
       date,
-      inAt,
-      outAt,
+      [
+        { start: inAt, end: lunchOutAt },
+        { start: lunchInAt, end: outAt },
+      ],
     )) as { ok: boolean; status: number };
     return await recordResult(
       userId,
@@ -179,6 +191,8 @@ export async function executeForUser(
         status: "success",
         planned_clock_in: inAt,
         planned_clock_out: outAt,
+        planned_lunch_out: lunchOutAt,
+        planned_lunch_in: lunchInAt,
         response: resp,
       },
       opts.triggeredBy,
@@ -205,6 +219,8 @@ async function recordResult(
     run_date: date,
     planned_clock_in: result.planned_clock_in ?? null,
     planned_clock_out: result.planned_clock_out ?? null,
+    planned_lunch_out: result.planned_lunch_out ?? null,
+    planned_lunch_in: result.planned_lunch_in ?? null,
     status: result.status,
     error: result.error ?? null,
     bamboo_response: result.response ?? null,

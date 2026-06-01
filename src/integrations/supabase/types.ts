@@ -24,6 +24,10 @@ export type Database = {
           created_at: string
           employee_id: string
           enabled: boolean
+          lunch_in_end: string
+          lunch_in_start: string
+          lunch_out_end: string
+          lunch_out_start: string
           subdomain: string
           updated_at: string
           user_id: string
@@ -37,6 +41,10 @@ export type Database = {
           created_at?: string
           employee_id: string
           enabled?: boolean
+          lunch_in_end?: string
+          lunch_in_start?: string
+          lunch_out_end?: string
+          lunch_out_start?: string
           subdomain: string
           updated_at?: string
           user_id: string
@@ -50,6 +58,10 @@ export type Database = {
           created_at?: string
           employee_id?: string
           enabled?: boolean
+          lunch_in_end?: string
+          lunch_in_start?: string
+          lunch_out_end?: string
+          lunch_out_start?: string
           subdomain?: string
           updated_at?: string
           user_id?: string
@@ -64,6 +76,8 @@ export type Database = {
           id: string
           planned_clock_in: string | null
           planned_clock_out: string | null
+          planned_lunch_in: string | null
+          planned_lunch_out: string | null
           run_date: string
           status: string
           triggered_by: string
@@ -76,6 +90,8 @@ export type Database = {
           id?: string
           planned_clock_in?: string | null
           planned_clock_out?: string | null
+          planned_lunch_in?: string | null
+          planned_lunch_out?: string | null
           run_date: string
           status: string
           triggered_by?: string
@@ -88,6 +104,8 @@ export type Database = {
           id?: string
           planned_clock_in?: string | null
           planned_clock_out?: string | null
+          planned_lunch_in?: string | null
+          planned_lunch_out?: string | null
           run_date?: string
           status?: string
           triggered_by?: string

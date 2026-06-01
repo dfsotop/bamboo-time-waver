@@ -18,6 +18,10 @@ const SaveInput = z
     apiKey: z.string().trim().min(8).max(512).optional(),
     clockin_start: TimeStr,
     clockin_end: TimeStr,
+    lunch_out_start: TimeStr,
+    lunch_out_end: TimeStr,
+    lunch_in_start: TimeStr,
+    lunch_in_end: TimeStr,
     clockout_start: TimeStr,
     clockout_end: TimeStr,
     enabled: z.boolean(),
@@ -26,17 +30,41 @@ const SaveInput = z
     message: "Clock-in earliest must be before clock-in latest",
     path: ["clockin_end"],
   })
+  .refine((d) => toMin(d.lunch_out_start) < toMin(d.lunch_out_end), {
+    message: "Lunch-out earliest must be before lunch-out latest",
+    path: ["lunch_out_end"],
+  })
+  .refine((d) => toMin(d.lunch_in_start) < toMin(d.lunch_in_end), {
+    message: "Lunch-in earliest must be before lunch-in latest",
+    path: ["lunch_in_end"],
+  })
   .refine((d) => toMin(d.clockout_start) < toMin(d.clockout_end), {
     message: "Clock-out earliest must be before clock-out latest",
     path: ["clockout_end"],
   })
-  .refine((d) => toMin(d.clockin_end) <= toMin(d.clockout_start), {
-    message: "Clock-in window must end before clock-out window starts",
+  .refine((d) => toMin(d.clockin_end) <= toMin(d.lunch_out_start), {
+    message: "Clock-in window must end before lunch-out window starts",
+    path: ["lunch_out_start"],
+  })
+  .refine((d) => toMin(d.lunch_out_end) <= toMin(d.lunch_in_start), {
+    message: "Lunch-out window must end before lunch-in window starts",
+    path: ["lunch_in_start"],
+  })
+  .refine((d) => toMin(d.lunch_in_end) <= toMin(d.clockout_start), {
+    message: "Lunch-in window must end before clock-out window starts",
     path: ["clockout_start"],
   })
   .refine((d) => toMin(d.clockin_end) - toMin(d.clockin_start) <= 120, {
     message: "Clock-in window must be at most 2 hours wide",
     path: ["clockin_end"],
+  })
+  .refine((d) => toMin(d.lunch_out_end) - toMin(d.lunch_out_start) <= 120, {
+    message: "Lunch-out window must be at most 2 hours wide",
+    path: ["lunch_out_end"],
+  })
+  .refine((d) => toMin(d.lunch_in_end) - toMin(d.lunch_in_start) <= 120, {
+    message: "Lunch-in window must be at most 2 hours wide",
+    path: ["lunch_in_end"],
   })
   .refine((d) => toMin(d.clockout_end) - toMin(d.clockout_start) <= 120, {
     message: "Clock-out window must be at most 2 hours wide",
@@ -94,6 +122,10 @@ export const saveSettings = createServerFn({ method: "POST" })
       api_key_encrypted: apiKey ? encryptSecret(apiKey) : existing!.api_key_encrypted,
       clockin_start: data.clockin_start,
       clockin_end: data.clockin_end,
+      lunch_out_start: data.lunch_out_start,
+      lunch_out_end: data.lunch_out_end,
+      lunch_in_start: data.lunch_in_start,
+      lunch_in_end: data.lunch_in_end,
       clockout_start: data.clockout_start,
       clockout_end: data.clockout_end,
       enabled: data.enabled,
@@ -113,7 +145,7 @@ export const getSettings = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("bamboo_settings")
       .select(
-        "subdomain, employee_id, clockin_start, clockin_end, clockout_start, clockout_end, enabled, updated_at",
+        "subdomain, employee_id, clockin_start, clockin_end, lunch_out_start, lunch_out_end, lunch_in_start, lunch_in_end, clockout_start, clockout_end, enabled, updated_at",
       )
       .eq("user_id", context.userId)
       .maybeSingle();

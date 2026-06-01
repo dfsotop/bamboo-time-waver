@@ -126,24 +126,21 @@ export async function hasEntryForDate(
   return Array.isArray(items) && items.length > 0;
 }
 
-/** Submit a clock-in + clock-out entry pair for the given date. */
+/** Submit one or more clock entry pairs (e.g. morning + afternoon) for the given date. */
 export async function storeClockEntries(
   subdomain: string,
   apiKey: string,
   employeeId: string,
   isoDate: string,
-  clockInHHMM: string,
-  clockOutHHMM: string,
+  pairs: Array<{ start: string; end: string }>,
 ): Promise<unknown> {
   const body = {
-    entries: [
-      {
-        employeeId: Number(employeeId),
-        date: isoDate,
-        start: clockInHHMM,
-        end: clockOutHHMM,
-      },
-    ],
+    entries: pairs.map((p) => ({
+      employeeId: Number(employeeId),
+      date: isoDate,
+      start: p.start,
+      end: p.end,
+    })),
   };
   const res = await bambooFetch(subdomain, apiKey, "/time_tracking/clock_entries/store", {
     method: "POST",
