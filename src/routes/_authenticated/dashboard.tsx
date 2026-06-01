@@ -61,7 +61,7 @@ function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Daily auto clock-in for BambooHR, weekdays at 10:00 Europe/Madrid.
+            Daily auto clock-in for BambooHR, weekdays at 08:00 Europe/Madrid.
           </p>
         </div>
         <Button
@@ -89,7 +89,7 @@ function DashboardPage() {
       )}
 
       {isConfigured && (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Subdomain</CardDescription>
@@ -102,6 +102,17 @@ function DashboardPage() {
               <CardTitle className="text-lg">
                 {String(settings.data?.settings?.clockin_start).slice(0, 5)} –{" "}
                 {String(settings.data?.settings?.clockin_end).slice(0, 5)}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Lunch break</CardDescription>
+              <CardTitle className="text-lg">
+                {String(settings.data?.settings?.lunch_out_start).slice(0, 5)} –{" "}
+                {String(settings.data?.settings?.lunch_out_end).slice(0, 5)} ·{" "}
+                {String(settings.data?.settings?.lunch_in_start).slice(0, 5)} –{" "}
+                {String(settings.data?.settings?.lunch_in_end).slice(0, 5)}
               </CardTitle>
             </CardHeader>
           </Card>
