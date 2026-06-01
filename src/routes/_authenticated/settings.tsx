@@ -168,7 +168,38 @@ function SettingsPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label>Clock-out earliest</Label>
+              <Label>Lunch-out earliest</Label>
+              <Input
+                type="time"
+                value={form.lunch_out_start}
+                onChange={(e) => setForm({ ...form, lunch_out_start: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Lunch-out latest</Label>
+              <Input
+                type="time"
+                value={form.lunch_out_end}
+                onChange={(e) => setForm({ ...form, lunch_out_end: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Lunch-in earliest</Label>
+              <Input
+                type="time"
+                value={form.lunch_in_start}
+                onChange={(e) => setForm({ ...form, lunch_in_start: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Lunch-in latest</Label>
+              <Input
+                type="time"
+                value={form.lunch_in_end}
+                onChange={(e) => setForm({ ...form, lunch_in_end: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
               <Input
                 type="time"
                 value={form.clockout_start}
