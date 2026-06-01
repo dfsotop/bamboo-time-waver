@@ -61,7 +61,7 @@ function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">
-            Daily auto clock-in for BambooHR, weekdays at 10:00 Europe/Madrid.
+            Daily auto clock-in for BambooHR, weekdays at 08:00 Europe/Madrid.
           </p>
         </div>
         <Button
