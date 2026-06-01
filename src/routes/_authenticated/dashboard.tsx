@@ -154,7 +154,9 @@ function DashboardPage() {
                       <TableCell>{row.run_date}</TableCell>
                       <TableCell className="font-mono text-xs">
                         {row.planned_clock_in && row.planned_clock_out
-                          ? `${String(row.planned_clock_in).slice(0, 5)} → ${String(row.planned_clock_out).slice(0, 5)}`
+                          ? row.planned_lunch_out && row.planned_lunch_in
+                            ? `${String(row.planned_clock_in).slice(0, 5)} → ${String(row.planned_lunch_out).slice(0, 5)} · ${String(row.planned_lunch_in).slice(0, 5)} → ${String(row.planned_clock_out).slice(0, 5)}`
+                            : `${String(row.planned_clock_in).slice(0, 5)} → ${String(row.planned_clock_out).slice(0, 5)}`
                           : "—"}
                       </TableCell>
                       <TableCell className="text-xs">{row.triggered_by}</TableCell>
