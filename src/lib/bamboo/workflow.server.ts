@@ -23,6 +23,8 @@ export interface ExecutionResult {
   status: ExecutionStatus;
   planned_clock_in?: string;
   planned_clock_out?: string;
+  planned_lunch_out?: string;
+  planned_lunch_in?: string;
   error?: string;
   response?: { ok: boolean; status: number };
 }
