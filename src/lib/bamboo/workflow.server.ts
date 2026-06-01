@@ -219,6 +219,8 @@ async function recordResult(
     run_date: date,
     planned_clock_in: result.planned_clock_in ?? null,
     planned_clock_out: result.planned_clock_out ?? null,
+    planned_lunch_out: result.planned_lunch_out ?? null,
+    planned_lunch_in: result.planned_lunch_in ?? null,
     status: result.status,
     error: result.error ?? null,
     bamboo_response: result.response ?? null,
