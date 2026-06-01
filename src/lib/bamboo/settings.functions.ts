@@ -145,7 +145,7 @@ export const getSettings = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("bamboo_settings")
       .select(
-        "subdomain, employee_id, clockin_start, clockin_end, clockout_start, clockout_end, enabled, updated_at",
+        "subdomain, employee_id, clockin_start, clockin_end, lunch_out_start, lunch_out_end, lunch_in_start, lunch_in_end, clockout_start, clockout_end, enabled, updated_at",
       )
       .eq("user_id", context.userId)
       .maybeSingle();
