@@ -2,12 +2,23 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getSettings, saveSettings } from "@/lib/bamboo/settings.functions";
+import { deleteSettings, getSettings, saveSettings } from "@/lib/bamboo/settings.functions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { CheckCircle2 } from "lucide-react";
 
@@ -82,6 +93,20 @@ function SettingsPage() {
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "Failed to save");
+    },
+  });
+
+  const removeSettings = useServerFn(deleteSettings);
+  const deleteMutation = useMutation({
+    mutationFn: async () => removeSettings(),
+    onSuccess: () => {
+      toast.success("Opted out — your BambooHR key and settings were deleted");
+      setForm((f) => ({ ...f, subdomain: "", apiKey: "", enabled: true }));
+      qc.invalidateQueries({ queryKey: ["settings"] });
+      qc.invalidateQueries({ queryKey: ["history"] });
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Failed to opt out");
     },
   });
 
@@ -200,6 +225,7 @@ function SettingsPage() {
               />
             </div>
             <div className="space-y-1">
+              <Label>Clock-out earliest</Label>
               <Input
                 type="time"
                 value={form.clockout_start}
@@ -231,6 +257,40 @@ function SettingsPage() {
           {mutation.isPending ? "Saving…" : "Save settings"}
         </Button>
       </div>
+
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-destructive">Opt out</CardTitle>
+          <CardDescription>
+            Deletes your BambooHR API key and schedule from the database. The daily job stops
+            running for you immediately. You can set it up again any time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={!hasKey || deleteMutation.isPending}>
+                {deleteMutation.isPending ? "Removing…" : "Opt out & delete my API key"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete your BambooHR connection?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Your stored API key, subdomain and time windows will be permanently removed and
+                  the scheduler will skip your account. This can't be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteMutation.mutate()}>
+                  Yes, opt out
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -163,3 +163,14 @@ export const getSettings = createServerFn({ method: "GET" })
       emailVerified,
     };
   });
+
+export const deleteSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { error } = await supabaseAdmin
+      .from("bamboo_settings")
+      .delete()
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
