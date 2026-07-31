@@ -257,6 +257,40 @@ function SettingsPage() {
           {mutation.isPending ? "Saving…" : "Save settings"}
         </Button>
       </div>
+
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-destructive">Opt out</CardTitle>
+          <CardDescription>
+            Deletes your BambooHR API key and schedule from the database. The daily job stops
+            running for you immediately. You can set it up again any time.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={!hasKey || deleteMutation.isPending}>
+                {deleteMutation.isPending ? "Removing…" : "Opt out & delete my API key"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete your BambooHR connection?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Your stored API key, subdomain and time windows will be permanently removed and
+                  the scheduler will skip your account. This can't be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => deleteMutation.mutate()}>
+                  Yes, opt out
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }
