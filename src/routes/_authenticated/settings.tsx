@@ -96,6 +96,20 @@ function SettingsPage() {
     },
   });
 
+  const removeSettings = useServerFn(deleteSettings);
+  const deleteMutation = useMutation({
+    mutationFn: async () => removeSettings(),
+    onSuccess: () => {
+      toast.success("Opted out — your BambooHR key and settings were deleted");
+      setForm((f) => ({ ...f, subdomain: "", apiKey: "", enabled: true }));
+      qc.invalidateQueries({ queryKey: ["settings"] });
+      qc.invalidateQueries({ queryKey: ["history"] });
+    },
+    onError: (e: unknown) => {
+      toast.error(e instanceof Error ? e.message : "Failed to opt out");
+    },
+  });
+
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading…</div>;
 
   const hasKey = data?.hasApiKey ?? false;
