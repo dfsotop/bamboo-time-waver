@@ -225,6 +225,7 @@ function SettingsPage() {
               />
             </div>
             <div className="space-y-1">
+              <Label>Clock-out earliest</Label>
               <Input
                 type="time"
                 value={form.clockout_start}
