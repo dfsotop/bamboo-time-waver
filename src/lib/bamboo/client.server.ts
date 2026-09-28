@@ -77,6 +77,12 @@ export async function findEmployeeByEmail(
   );
 }
 
+/** Time-off types that still count as a working day. */
+function isWorkAway(name?: string | null): boolean {
+  if (!name) return false;
+  return /work\s*(away|from|remote)|remote|wfh|teletrabajo|business\s*trip/i.test(name);
+}
+
 /** Check whether an employee has any time-off / holiday today. */
 export async function getTimeOffToday(
   subdomain: string,
@@ -97,13 +103,29 @@ export async function getTimeOffToday(
     employeeId?: number;
     name?: string;
   }>;
-  const holiday = items.find((i) => i.type === "holiday");
+  const holiday = items.find((i) => i.type === "holiday" && !isWorkAway(i.name));
   if (holiday) return { isOff: true, reason: `holiday: ${holiday.name ?? "company holiday"}` };
   const personal = items.find(
     (i) => i.type === "timeOff" && String(i.employeeId) === String(employeeId),
   );
-  if (personal) return { isOff: true, reason: "time off / vacation / sick" };
-  return { isOff: false };
+  if (!personal) return { isOff: false };
+
+  // whos_out doesn't include the time-off type, so look up the actual requests
+  // and ignore "work away" style types (still a working day).
+  const reqRes = await bambooFetch(
+    subdomain,
+    apiKey,
+    `/time_off/requests?start=${isoDate}&end=${isoDate}&employeeId=${encodeURIComponent(employeeId)}&status=approved`,
+  );
+  if (reqRes.ok) {
+    const reqs = (await reqRes.json()) as Array<{ type?: { name?: string } }>;
+    if (Array.isArray(reqs) && reqs.length > 0) {
+      const realOff = reqs.find((r) => !isWorkAway(r.type?.name));
+      if (!realOff) return { isOff: false };
+      return { isOff: true, reason: `time off: ${realOff.type?.name ?? "leave"}` };
+    }
+  }
+  return { isOff: true, reason: "time off / vacation / sick" };
 }
 
 /** Returns true if any clock entry or timesheet entry exists for that day. */
