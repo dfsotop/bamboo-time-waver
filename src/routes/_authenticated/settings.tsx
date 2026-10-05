@@ -20,7 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, TriangleAlert } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -160,6 +160,27 @@ function SettingsPage() {
                 Employee ID: <span className="font-mono">{data?.settings?.employee_id}</span>
               </p>
             )}
+            <div className="rounded-md border p-3 space-y-2">
+              <p className="flex items-center gap-2 text-sm font-medium">
+                <TriangleAlert className="h-4 w-4 shrink-0" /> Before you paste your API key
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                <li>
+                  A BambooHR API key is a password equivalent: it grants the same access to
+                  BambooHR as your login, according to your permissions (profile data,
+                  time-tracking, time off).
+                </li>
+                <li>
+                  This app stores it encrypted in its database and uses it only to read the
+                  schedule (who's out) and add your clock entries.
+                </li>
+                <li>
+                  Don't share the key with anyone or paste it into other tools. You can revoke
+                  it at any time from BambooHR (profile → API Keys), or delete it here with
+                  "Opt out & delete my API key".
+                </li>
+              </ul>
+            </div>
             <p className="text-xs text-muted-foreground">
               Get one from BambooHR: profile → API Keys → Add new key.
             </p>
