@@ -2,13 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getHistory } from "@/lib/bamboo/history.functions";
-import { getSettings } from "@/lib/bamboo/settings.functions";
+import { getSettings, setSchedulerEnabled } from "@/lib/bamboo/settings.functions";
 import { runNow, retryExecution } from "@/lib/bamboo/run.functions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Play, RotateCw } from "lucide-react";
+import { Pause, Play, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -29,6 +29,7 @@ function DashboardPage() {
   const fetchSettings = useServerFn(getSettings);
   const runNowFn = useServerFn(runNow);
   const retryFn = useServerFn(retryExecution);
+  const toggleFn = useServerFn(setSchedulerEnabled);
   const qc = useQueryClient();
 
   const settings = useQuery({ queryKey: ["settings"], queryFn: () => fetchSettings() });
@@ -53,7 +54,17 @@ function DashboardPage() {
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Retry failed"),
   });
 
+  const toggleMutation = useMutation({
+    mutationFn: async (enabled: boolean) => await toggleFn({ data: { enabled } }),
+    onSuccess: (r) => {
+      toast.success(r.enabled ? "Auto clock-in resumed" : "Auto clock-in paused");
+      qc.invalidateQueries({ queryKey: ["settings"] });
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Update failed"),
+  });
+
   const isConfigured = Boolean(settings.data?.hasApiKey);
+  const isEnabled = Boolean(settings.data?.settings?.enabled);
 
   return (
     <div className="space-y-6">
@@ -64,13 +75,34 @@ function DashboardPage() {
             Daily auto clock-in for BambooHR, weekdays at 08:00 Europe/Madrid.
           </p>
         </div>
-        <Button
-          onClick={() => runMutation.mutate()}
-          disabled={!isConfigured || runMutation.isPending}
-        >
-          <Play className="mr-2 h-4 w-4" />
-          {runMutation.isPending ? "Running…" : "Run now"}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {isConfigured && (
+            <Button
+              variant="outline"
+              onClick={() => toggleMutation.mutate(!isEnabled)}
+              disabled={toggleMutation.isPending}
+            >
+              {isEnabled ? (
+                <>
+                  <Pause className="mr-2 h-4 w-4" />
+                  {toggleMutation.isPending ? "Pausing…" : "Pause auto clock-in"}
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  {toggleMutation.isPending ? "Resuming…" : "Resume auto clock-in"}
+                </>
+              )}
+            </Button>
+          )}
+          <Button
+            onClick={() => runMutation.mutate()}
+            disabled={!isConfigured || runMutation.isPending}
+          >
+            <Play className="mr-2 h-4 w-4" />
+            {runMutation.isPending ? "Running…" : "Run now"}
+          </Button>
+        </div>
       </div>
 
       {!isConfigured && (
@@ -83,6 +115,20 @@ function DashboardPage() {
                 Settings
               </Link>{" "}
               to enable the daily scheduler.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      {isConfigured && !isEnabled && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge variant="secondary">Paused</Badge> Auto clock-in is paused
+            </CardTitle>
+            <CardDescription>
+              No entries will be added automatically until you resume. Your API key and time
+              windows are kept. "Run now" still works for a one-off entry.
             </CardDescription>
           </CardHeader>
         </Card>

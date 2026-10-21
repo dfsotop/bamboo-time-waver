@@ -164,6 +164,22 @@ export const getSettings = createServerFn({ method: "GET" })
     };
   });
 
+const EnabledInput = z.object({ enabled: z.boolean() });
+
+export const setSchedulerEnabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => EnabledInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await supabaseAdmin
+      .from("bamboo_settings")
+      .update({ enabled: data.enabled })
+      .eq("user_id", context.userId)
+      .select("enabled");
+    if (error) throw new Error(error.message);
+    if (!rows || rows.length === 0) throw new Error("Connect BambooHR in Settings first");
+    return { enabled: rows[0].enabled };
+  });
+
 export const deleteSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
